@@ -1,9 +1,7 @@
-import 'dart:ffi';
-
 import 'package:bank/main.dart';
+import 'package:bank/widgets/flutter_account_registration.dart';
 import 'package:bank/widgets/flutter_bank_splash.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -17,6 +15,7 @@ class FlutterBankLogin extends StatefulWidget {
 class _FlutterBankLoginState extends State<FlutterBankLogin> {
   TextEditingController usernameController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
+  TextEditingController confirmPasswordController = TextEditingController();
 
   bool validateEmailAndPassword() {
     return usernameController.value.text.isNotEmpty &&
@@ -25,9 +24,10 @@ class _FlutterBankLoginState extends State<FlutterBankLogin> {
   }
 
   @override
-  void dispose(){
+  void dispose() {
     usernameController.dispose();
     passwordController.dispose();
+    confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -122,7 +122,7 @@ class _FlutterBankLoginState extends State<FlutterBankLogin> {
                         style: const TextStyle(fontSize: 16),
                       )),
 
-                  // Add Consumer 
+                  // Add Consumer
                   Consumer<LoginService>(builder: (context, lService, child) {
                     String errorMsg = lService.getErrorMessage();
 
@@ -164,7 +164,11 @@ class _FlutterBankLoginState extends State<FlutterBankLogin> {
             FlutterBankMainButton(
                 label: 'Register',
                 icon: Icons.account_circle,
-                onTap: () {},
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => FlutterAccountRegistration())
+                  );
+                },
                 backgroundColor: Ultis.mainThemeColor.withOpacity(0.05),
                 iconColor: Ultis.mainThemeColor,
                 labelColor: Ultis.mainThemeColor)
@@ -261,6 +265,18 @@ class LoginService extends ChangeNotifier {
       khi đó ChangeNotifierProvider sẽ thông báo cho tất cả Consumer liên quan để rebuild.
     */
     notifyListeners();
+  }
+
+  Future<bool> createUserWithEmailAndPassword(String email, String pwd) async {
+    try {
+      UserCredential userCredentials = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: pwd);
+
+      return true; // or userCredentials != null;
+
+    } on FirebaseAuthException {
+      return false;
+    }
   }
 
   Future<bool> signInWithEmailAndPassword(String email, String password) async {

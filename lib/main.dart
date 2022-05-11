@@ -1,3 +1,4 @@
+import 'package:bank/widgets/flutter_account_registration.dart';
 import 'package:bank/widgets/flutter_bank_login.dart';
 import 'package:bank/widgets/flutter_bank_splash.dart';
 import 'package:flutter/material.dart';
