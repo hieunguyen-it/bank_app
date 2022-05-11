@@ -1,5 +1,11 @@
+import 'dart:ffi';
+
+import 'package:bank/main.dart';
 import 'package:bank/widgets/flutter_bank_splash.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class FlutterBankLogin extends StatefulWidget {
   const FlutterBankLogin({Key? key}) : super(key: key);
@@ -12,8 +18,24 @@ class _FlutterBankLoginState extends State<FlutterBankLogin> {
   TextEditingController usernameController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
 
+  bool validateEmailAndPassword() {
+    return usernameController.value.text.isNotEmpty &&
+        passwordController.value.text.isNotEmpty &&
+        Ultis.validateEmail(usernameController.value.text);
+  }
+
+  @override
+  void dispose(){
+    usernameController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    LoginService loginService =
+        Provider.of<LoginService>(context, listen: false);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Container(
@@ -98,12 +120,46 @@ class _FlutterBankLoginState extends State<FlutterBankLogin> {
                             hintText: "Password"),
                         controller: passwordController,
                         style: const TextStyle(fontSize: 16),
-                      ))
+                      )),
+
+                  // Add Consumer 
+                  Consumer<LoginService>(builder: (context, lService, child) {
+                    String errorMsg = lService.getErrorMessage();
+
+                    if (errorMsg.isEmpty) {
+                      return const SizedBox(height: 40);
+                    }
+
+                    return Container(
+                        padding: const EdgeInsets.all(10),
+                        child: Row(children: [
+                          const Icon(Icons.warning, color: Colors.red),
+                          const SizedBox(width: 10),
+                          Expanded(
+                              child: Text(errorMsg,
+                                  style: const TextStyle(color: Colors.red)))
+                        ]));
+                  })
                 ],
               ),
             )),
             FlutterBankMainButton(
-                label: 'Sign In', enabled: true, onTap: () {}),
+                label: 'Sign In',
+                enabled: validateEmailAndPassword(),
+                onTap: () async {
+                  var username = usernameController.value.text;
+                  var pwd = passwordController.value.text;
+
+                  bool isLoggedIn = await loginService
+                      .signInWithEmailAndPassword(username, pwd);
+
+                  if (isLoggedIn) {
+                    usernameController.clear();
+                    passwordController.clear();
+                    Navigator.of(context).push(MaterialPageRoute(
+                        builder: (context) => FlutterBankMain()));
+                  }
+                }),
             const SizedBox(height: 10),
             FlutterBankMainButton(
                 label: 'Register',
@@ -181,5 +237,45 @@ class FlutterBankMainButton extends StatelessWidget {
         )
       ],
     );
+  }
+}
+
+// Config firebase 2
+class LoginService extends ChangeNotifier {
+  String _userId = '';
+  String _errorMessage = '';
+
+  String getUser() {
+    return _userId;
+  }
+
+  String getErrorMessage() {
+    return _errorMessage;
+  }
+
+  void setLogginErrorMessage(String msg) {
+    _errorMessage = msg;
+    /*
+      Model của chúng ta cần sử dụng ChangeNotifie (mixin hoặc extends).
+      Khi thay đổi thuộc tính của model, chúng ta sẽ call notifyListeners(), 
+      khi đó ChangeNotifierProvider sẽ thông báo cho tất cả Consumer liên quan để rebuild.
+    */
+    notifyListeners();
+  }
+
+  Future<bool> signInWithEmailAndPassword(String email, String password) async {
+    setLogginErrorMessage('');
+
+    try {
+      UserCredential credentials = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
+
+      _userId = credentials.user!.uid;
+
+      return true;
+    } on FirebaseAuthException catch (ex) {
+      setLogginErrorMessage('Error during sign-in: ' + ex.message!);
+      return false;
+    }
   }
 }
